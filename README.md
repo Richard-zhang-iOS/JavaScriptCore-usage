@@ -4,7 +4,7 @@
 
 JavaScriptCore 是 JavaScript 引擎，通常会被叫做虚拟机，专门设计来解释和执行 JavaScript 代码，可以理解为一个浏览器的运行内核。
 
-JavaScriptCore Framework 是 iOS7 引入的新功能，其实就是基于 Webkit 中以 C/C++ 实现的 JavaScriptCore 的一个封装,大多数 iOS 比较熟悉的是它的 Objective-C API，可以用简介的方式 JS 与Native 通讯，其实它还有C API的部分，虽然也是开源的，但是在查看源代码时只有较少的介绍，而且我们知道 Objective-C API 只是 C API 接口的封装。本文主要介绍 C API 部分，帮助大家更好理解 JavaScriptCore Framework。
+JavaScriptCore Framework 是 iOS7 引入的新功能，其实就是基于 Webkit 中以 C/C++ 实现的 JavaScriptCore 的一个封装,大多数 iOS 比较熟悉的是它的 Objective-C API，可以用简洁的方式实现 JS 与Native 交互，其实它还有C API的部分，虽然也是开源的，但是在查看源代码时只有较少的介绍，而且我们知道 Objective-C API 只是 C API 接口的封装。本文主要介绍 C API 部分，帮助大家更好理解 JavaScriptCore Framework。
 
 ## JavaScriptCore C API
 
@@ -20,7 +20,7 @@ JavaScriptCore C API 部分包含六个类 下面我们详细解释每个类的�
 
 - ##### JSObjectRef.h
 
-  JSObjectRef 相当于 Objective-C 中的 JSObject，它代表一个JavaScript对象，交互的核心放在都在这个类中实现。
+  JSObjectRef 相当于 Objective-C 中的 JSObject，它代表一个JavaScript对象，交互的核心都在这个类中实现。
 
 - ##### JSStringRef.h
 
@@ -247,23 +247,33 @@ JSObjectRef ObjectCallAsConstructor(JSContextRef ctx, JSObjectRef constructor, s
     JSGlobalContextRef globalContext = JSGlobalContextCreateInGroup(contextGroup, nil);
     JSObjectRef globalObject = JSContextGetGlobalObject(globalContext);
     
-    JSClassDefinition constructorClassDef = kJSClassDefinitionEmpty;
+     JSClassDefinition constructorClassDef = kJSClassDefinitionEmpty;
     constructorClassDef.getProperty = ObjectGetPropertyCallback;
     constructorClassDef.callAsFunction = ObjectCallAsFunctionCallback;
     constructorClassDef.callAsConstructor = ObjectCallAsConstructor;
     constructorClassDef.hasInstance = ObjectConstructorHasInstance;
     constructorClassDef.finalize = ObjectConstructorFinalize;
-  
+    
     JSClassRef loaderClass = JSClassCreate(&constructorClassDef);
     
-    JSObjectRef loader = JSObjectMake(globalContext, loaderClass, (__bridge void *)(self.view));
+    JSObjectRef globalObject = JSContextGetGlobalObject(globalContext);
+    
     JSStringRef logFunctionName = JSStringCreateWithUTF8CString("log");
-    JSObjectSetProperty(globalContext, globalObject, logFunctionName, loader, kJSPropertyAttributeNone, nil);
+    JSObjectRef functionObject = JSObjectMakeFunctionWithCallback(globalContext, logFunctionName, &ObjectCallAsFunctionCallback);
+
+    
+    JSObjectSetProperty(globalContext, globalObject, logFunctionName, functionObject, kJSPropertyAttributeNone, nil);
     
     JSStringRef logCallStatement = JSStringCreateWithUTF8CString("log()");
-    
     JSEvaluateScript(globalContext, logCallStatement, nil, nil, 1,nil);
     
+    
+    JSObjectRef loader = JSObjectMake(globalContext, loaderClass, (__bridge void *)(self.view));
+    JSStringRef myclass = JSStringCreateWithUTF8CString("myclass");
+    JSObjectSetProperty(globalContext, globalObject, myclass, loader, kJSPropertyAttributeNone, nil);
+    
+    JSStringRef callMyclass = JSStringCreateWithUTF8CString("myclass.start()");
+    JSEvaluateScript(globalContext, callMyclass, nil, nil, 1,nil);
     /* memory management code to prevent memory leaks */
     
     JSGlobalContextRelease(globalContext);
